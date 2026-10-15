@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Part2_Raceday_API.Data;
 using Part2_Raceday_API.Models;
 
@@ -13,34 +14,40 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.ConfigureServices(services =>
         {
-            // Remove the real SQL Server DbContext registration
+            // Remove the real SQL Server registration
             var descriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(DbContextOptions<RaceDayDbContext>));
 
             if (descriptor != null)
                 services.Remove(descriptor);
 
-            // Add InMemory database for tests
+            // Use a fixed InMemory database name
             services.AddDbContext<RaceDayDbContext>(options =>
             {
-                options.UseInMemoryDatabase("RaceDayTestDb_" + Guid.NewGuid());
+                options.UseInMemoryDatabase("RaceDayTestDb");
             });
-
-            // Ensure the database is created and seeded
-            var sp = services.BuildServiceProvider();
-            using var scope = sp.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<RaceDayDbContext>();
-            db.Database.EnsureCreated();
-
-            // Seed roles if not present (InMemory may not run HasData the same way)
-            if (!db.Roles.Any())
-            {
-                db.Roles.AddRange(
-                    new Role { RoleId = 1, Name = "Organiser" },
-                    new Role { RoleId = 2, Name = "Participant" }
-                );
-                db.SaveChanges();
-            }
         });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+
+        // Seed AFTER the host is fully built (this is the reliable way)
+        using var scope = host.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<RaceDayDbContext>();
+
+        db.Database.EnsureCreated();
+
+        if (!db.Roles.Any())
+        {
+            db.Roles.AddRange(
+                new Role { RoleId = 1, Name = "Organiser" },
+                new Role { RoleId = 2, Name = "Participant" }
+            );
+            db.SaveChanges();
+        }
+
+        return host;
     }
 }
