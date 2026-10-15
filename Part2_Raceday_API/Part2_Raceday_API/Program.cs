@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Part2_Raceday_API.Data;
 
@@ -34,6 +34,25 @@ builder.Services.AddSession(options =>
 });
 
 var app = builder.Build();
+
+// ===== Create / update the database automatically on startup =====
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<RaceDayDbContext>();
+    try
+    {
+        // This creates the database + tables + seeds the Roles if they don't exist
+        db.Database.EnsureCreated();
+        Console.WriteLine("Database is ready.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("=== DATABASE CONNECTION ERROR ===");
+        Console.WriteLine(ex.Message);
+        Console.WriteLine("Check your connection string in appsettings.Development.json");
+        // We still continue so you can at least open Swagger and see the error clearly
+    }
+}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())

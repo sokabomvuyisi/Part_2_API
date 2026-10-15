@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API\\Part2_Raceday_API.csproj": {}
+    "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API\\Part2_Raceday_API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj": {
+    "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj",
+        "projectUniqueName": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj",
         "projectName": "RaceDay.Contracts",
-        "projectPath": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj",
+        "projectPath": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj",
         "packagesPath": "C:\\Users\\Student\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API.Contracts\\obj\\",
+        "outputPath": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API.Contracts\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -69,14 +69,14 @@
         }
       }
     },
-    "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API\\Part2_Raceday_API.csproj": {
+    "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API\\Part2_Raceday_API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API\\Part2_Raceday_API.csproj",
+        "projectUniqueName": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API\\Part2_Raceday_API.csproj",
         "projectName": "Part2_Raceday_API",
-        "projectPath": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API\\Part2_Raceday_API.csproj",
+        "projectPath": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API\\Part2_Raceday_API.csproj",
         "packagesPath": "C:\\Users\\Student\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API\\obj\\",
+        "outputPath": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -97,8 +97,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj": {
-                "projectPath": "C:\\Users\\Student\\source\\repos\\Part2_Raceday_API\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj"
+              "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj": {
+                "projectPath": "C:\\Users\\Student\\Downloads\\RaceDayAPI_Fixed\\RaceDayAPI_Fixed\\Part2_Raceday_API.Contracts\\RaceDay.Contracts.csproj"
               }
             }
           }
