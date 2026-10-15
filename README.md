@@ -18,3 +18,9 @@ There are two types of users:
 - GitHub Actions for continuous integration
 
 ## How the project is organised
+Part2_RaceDay_API/
+├── Part2_RaceDay_API/          → the actual API (controllers, models, database)
+├── Part2_RaceDay_API.Contracts/    → shared request/response objects (DTOs)
+├── Part2_RaceDay_API_.Tests/    → automated tests
+├── Part_1_Documents/                 → Part 1 ERD, endpoint plan and SQL script
+└── .github/workflows/    → CI pipeline
