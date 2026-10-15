@@ -23,7 +23,7 @@ jobs:
       run: dotnet restore ./Part2_RaceDay_API.sln
 
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build ./Part2_RaceDay_API.sln --no-restore --configuration Release
 
     - name: Run tests
-      run: dotnet test --no-build --configuration Release --verbosity normal
+      run: dotnet test ./Part2_RaceDay_API.sln --no-build --configuration Release --verbosity normal
