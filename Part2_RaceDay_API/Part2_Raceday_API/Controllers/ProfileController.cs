@@ -1,3 +1,10 @@
+// =============================================================================
+// ProfileController.cs – View and update the currently logged-in user's profile
+// =============================================================================
+// Both Organisers and Participants can use these endpoints.
+// A user can only ever see or change THEIR OWN profile.
+// =============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Part2_Raceday_API.Data;
@@ -8,7 +15,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Part2_Raceday_API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/[controller]")]                 // → /api/profile/...
 [SwaggerTag("User Profile - View and update own profile")]
 public class ProfileController : ControllerBase
 {
@@ -19,16 +26,18 @@ public class ProfileController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Get the currently logged-in user's profile.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/profile/me
+    // -------------------------------------------------------------------------
+    /// <summary>Get the currently logged-in user's profile.</summary>
     [HttpGet("me")]
-    [AuthorizeRole] // Any authenticated user
+    [AuthorizeRole]                         // Any authenticated user
     [SwaggerOperation(Summary = "Get my profile")]
     [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyProfile()
     {
+        // UserId comes from the session that was created at login
         var userId = HttpContext.Session.GetInt32("UserId")!.Value;
 
         var user = await _context.Users
@@ -48,9 +57,10 @@ public class ProfileController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Update the currently logged-in user's own profile information.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // PUT /api/profile/me
+    // -------------------------------------------------------------------------
+    /// <summary>Update the currently logged-in user's own profile information.</summary>
     [HttpPut("me")]
     [AuthorizeRole]
     [SwaggerOperation(Summary = "Update my profile")]
@@ -71,10 +81,12 @@ public class ProfileController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
             return BadRequest(new { message = "First name and last name are required." });
 
-        // Check email uniqueness if changed
+        // If the user is changing their email, make sure the new one is not already taken
         if (!string.Equals(user.Email, request.Email, StringComparison.OrdinalIgnoreCase))
         {
-            var emailTaken = await _context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.Trim().ToLower() && u.UserId != userId);
+            var emailTaken = await _context.Users
+                .AnyAsync(u => u.Email.ToLower() == request.Email.Trim().ToLower() && u.UserId != userId);
+
             if (emailTaken)
                 return BadRequest(new { message = "Email is already in use by another account." });
         }
