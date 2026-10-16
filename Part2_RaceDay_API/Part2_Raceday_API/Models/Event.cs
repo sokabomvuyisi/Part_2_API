@@ -1,3 +1,7 @@
+// =============================================================================
+// Event.cs – A race / walk / cycle event created by an Organiser
+// =============================================================================
+
 namespace Part2_Raceday_API.Models;
 
 public class Event
@@ -8,10 +12,14 @@ public class Event
     public DateTime EventDate { get; set; }
     public string Location { get; set; } = string.Empty;
     public decimal DistanceKm { get; set; }
-    public string EventType { get; set; } = string.Empty; // Run, Walk, Cycle
+
+    // Allowed values: "Run", "Walk", "Cycle"
+    public string EventType { get; set; } = string.Empty;
+
+    // Who created this event
     public int OrganiserId { get; set; }
 
-    // Navigation
+    // ----- Navigation properties -----
     public AppUser Organiser { get; set; } = null!;
     public ICollection<Category> Categories { get; set; } = new List<Category>();
     public ICollection<Enrolment> Enrolments { get; set; } = new List<Enrolment>();
