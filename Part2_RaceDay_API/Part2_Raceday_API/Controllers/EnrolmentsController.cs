@@ -1,3 +1,12 @@
+// =============================================================================
+// EnrolmentsController.cs – Participants enrol in events, Organisers manage them
+// =============================================================================
+// Security rules:
+//   - Enrol                 → only Participants
+//   - View own enrolments   → only Participants
+//   - View / update status  → only the Organiser who owns the event
+// =============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Part2_Raceday_API.Data;
@@ -9,7 +18,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Part2_Raceday_API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/[controller]")]                 // → /api/enrolments/...
 [SwaggerTag("Event Enrolments - Participants enter events, Organisers view enrolments")]
 public class EnrolmentsController : ControllerBase
 {
@@ -20,9 +29,10 @@ public class EnrolmentsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Participant enrols in an event by selecting a category.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // POST /api/enrolments
+    // -------------------------------------------------------------------------
+    /// <summary>Participant enrols in an event by selecting a category.</summary>
     [HttpPost]
     [AuthorizeRole("Participant")]
     [SwaggerOperation(Summary = "Enrol in an event")]
@@ -33,17 +43,19 @@ public class EnrolmentsController : ControllerBase
     {
         var userId = HttpContext.Session.GetInt32("UserId")!.Value;
 
+        // Make sure the event exists
         var ev = await _context.Events.FirstOrDefaultAsync(e => e.EventId == request.EventId);
         if (ev == null)
             return BadRequest(new { message = "Event not found." });
 
+        // Make sure the category belongs to that event
         var category = await _context.Categories
             .FirstOrDefaultAsync(c => c.CategoryId == request.CategoryId && c.EventId == request.EventId);
 
         if (category == null)
             return BadRequest(new { message = "Category not found for this event." });
 
-        // Prevent duplicate enrolment
+        // Business rule: a participant may enrol only once per event
         var alreadyEnrolled = await _context.Enrolments
             .AnyAsync(en => en.EventId == request.EventId && en.ParticipantId == userId);
 
@@ -55,14 +67,14 @@ public class EnrolmentsController : ControllerBase
             EventId = request.EventId,
             CategoryId = request.CategoryId,
             ParticipantId = userId,
-            Status = "Pending",
+            Status = "Pending",                 // Default status
             EnrolmentDate = DateTime.UtcNow
         };
 
         _context.Enrolments.Add(enrolment);
         await _context.SaveChangesAsync();
 
-        // Load related data for response
+        // Load related data so we can return a rich DTO
         await _context.Entry(enrolment).Reference(e => e.Event).LoadAsync();
         await _context.Entry(enrolment).Reference(e => e.Category).LoadAsync();
         await _context.Entry(enrolment).Reference(e => e.Participant).LoadAsync();
@@ -83,9 +95,10 @@ public class EnrolmentsController : ControllerBase
         return CreatedAtAction(nameof(GetMine), dto);
     }
 
-    /// <summary>
-    /// Get enrolments of the currently logged-in Participant.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/enrolments/mine
+    // -------------------------------------------------------------------------
+    /// <summary>Get enrolments of the currently logged-in Participant.</summary>
     [HttpGet("mine")]
     [AuthorizeRole("Participant")]
     [SwaggerOperation(Summary = "Get my enrolments")]
@@ -114,9 +127,10 @@ public class EnrolmentsController : ControllerBase
         return Ok(list);
     }
 
-    /// <summary>
-    /// Organiser views all enrolments for one of their events.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/enrolments/event/{eventId}
+    // -------------------------------------------------------------------------
+    /// <summary>Organiser views all enrolments for one of their events.</summary>
     [HttpGet("event/{eventId:int}")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Get enrolments for an event (Organiser)")]
@@ -131,8 +145,10 @@ public class EnrolmentsController : ControllerBase
         if (ev == null)
             return NotFound(new { message = "Event not found." });
 
+        // Ownership check
         if (ev.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only view enrolments for events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only view enrolments for events that you organised." });
 
         var list = await _context.Enrolments
             .Include(e => e.Category)
@@ -155,9 +171,10 @@ public class EnrolmentsController : ControllerBase
         return Ok(list);
     }
 
-    /// <summary>
-    /// Organiser updates the status of an enrolment (Pending / Confirmed / Cancelled).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // PUT /api/enrolments/{id}/status
+    // -------------------------------------------------------------------------
+    /// <summary>Organiser updates the status of an enrolment (Pending / Confirmed / Cancelled).</summary>
     [HttpPut("{id:int}/status")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Update enrolment status")]
@@ -178,8 +195,10 @@ public class EnrolmentsController : ControllerBase
             return NotFound(new { message = "Enrolment not found." });
 
         if (enrolment.Event.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only manage enrolments for your own events." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only manage enrolments for your own events." });
 
+        // Only allow the three known status values
         var valid = new[] { "Pending", "Confirmed", "Cancelled" };
         if (!valid.Contains(request.Status, StringComparer.OrdinalIgnoreCase))
             return BadRequest(new { message = "Status must be Pending, Confirmed or Cancelled." });
