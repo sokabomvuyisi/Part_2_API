@@ -1,3 +1,11 @@
+// =============================================================================
+// CategoriesController.cs – Age / distance categories that belong to an Event
+// =============================================================================
+// Security rules:
+//   - Viewing categories  → any authenticated user
+//   - Creating / updating / deleting → only the Organiser who owns the event
+// =============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Part2_Raceday_API.Data;
@@ -9,7 +17,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Part2_Raceday_API.Controllers;
 
 [ApiController]
-[Route("api")]
+[Route("api")]                              // Routes are nested under /api/events/...
 [SwaggerTag("Categories - Age/distance categories belonging to an event")]
 public class CategoriesController : ControllerBase
 {
@@ -20,9 +28,10 @@ public class CategoriesController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Get all categories for a specific event (both roles can view).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/events/{eventId}/categories
+    // -------------------------------------------------------------------------
+    /// <summary>Get all categories for a specific event (both roles can view).</summary>
     [HttpGet("events/{eventId:int}/categories")]
     [AuthorizeRole]
     [SwaggerOperation(Summary = "Get categories for an event")]
@@ -48,9 +57,10 @@ public class CategoriesController : ControllerBase
         return Ok(categories);
     }
 
-    /// <summary>
-    /// Create a category for an event (only the Organiser who owns the event).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // POST /api/events/{eventId}/categories
+    // -------------------------------------------------------------------------
+    /// <summary>Create a category for an event (only the Organiser who owns the event).</summary>
     [HttpPost("events/{eventId:int}/categories")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Create a category for an event")]
@@ -65,8 +75,10 @@ public class CategoriesController : ControllerBase
         if (ev == null)
             return NotFound(new { message = "Event not found." });
 
+        // Ownership check
         if (ev.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only add categories to events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only add categories to events that you organised." });
 
         if (string.IsNullOrWhiteSpace(request.Name))
             return BadRequest(new { message = "Category name is required." });
@@ -92,9 +104,10 @@ public class CategoriesController : ControllerBase
         return CreatedAtAction(nameof(GetByEvent), new { eventId }, dto);
     }
 
-    /// <summary>
-    /// Update a category (only the owning Organiser).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // PUT /api/categories/{id}
+    // -------------------------------------------------------------------------
+    /// <summary>Update a category (only the owning Organiser).</summary>
     [HttpPut("categories/{id:int}")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Update a category")]
@@ -105,6 +118,7 @@ public class CategoriesController : ControllerBase
     {
         var userId = HttpContext.Session.GetInt32("UserId")!.Value;
 
+        // Include the parent Event so we can check ownership
         var category = await _context.Categories
             .Include(c => c.Event)
             .FirstOrDefaultAsync(c => c.CategoryId == id);
@@ -113,7 +127,8 @@ public class CategoriesController : ControllerBase
             return NotFound(new { message = "Category not found." });
 
         if (category.Event.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only update categories of events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only update categories of events that you organised." });
 
         category.Name = request.Name.Trim();
         category.Description = request.Description?.Trim();
@@ -129,9 +144,10 @@ public class CategoriesController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Delete a category (only the owning Organiser).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // DELETE /api/categories/{id}
+    // -------------------------------------------------------------------------
+    /// <summary>Delete a category (only the owning Organiser).</summary>
     [HttpDelete("categories/{id:int}")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Delete a category")]
@@ -150,7 +166,8 @@ public class CategoriesController : ControllerBase
             return NotFound(new { message = "Category not found." });
 
         if (category.Event.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only delete categories of events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only delete categories of events that you organised." });
 
         _context.Categories.Remove(category);
         await _context.SaveChangesAsync();
