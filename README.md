@@ -73,7 +73,7 @@ Every time code is pushed to GitHub, GitHub Actions automatically:
 A green build means everything is working.
 
 ## Video demonstration
-*(Add your unlisted YouTube link here)*
+(https://youtu.be/yR6mpdnO58A)
 
 ## Part 1 documents
 All planning documents (ERD, Endpoint Plan, SQL script) are kept in the `docs/` folder so the marker can see that the API matches the original design.
