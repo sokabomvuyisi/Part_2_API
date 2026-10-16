@@ -1,3 +1,12 @@
+// =============================================================================
+// ResultsController.cs – Finish times and positions
+// =============================================================================
+// Security rules:
+//   - Recording a result      → only the Organiser who owns the event
+//   - Viewing own results     → only Participants
+//   - Viewing event results   → only the Organiser who owns the event
+// =============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Part2_Raceday_API.Data;
@@ -9,7 +18,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Part2_Raceday_API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/[controller]")]                 // → /api/results/...
 [SwaggerTag("Results - Organisers record finish times, Participants view their results")]
 public class ResultsController : ControllerBase
 {
@@ -20,9 +29,10 @@ public class ResultsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Organiser records a result (finish time + position) for an enrolment.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // POST /api/results
+    // -------------------------------------------------------------------------
+    /// <summary>Organiser records a result (finish time + position) for an enrolment.</summary>
     [HttpPost]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Record a result")]
@@ -33,6 +43,7 @@ public class ResultsController : ControllerBase
     {
         var userId = HttpContext.Session.GetInt32("UserId")!.Value;
 
+        // Load the enrolment together with its event and any existing result
         var enrolment = await _context.Enrolments
             .Include(e => e.Event)
             .Include(e => e.Participant)
@@ -42,9 +53,12 @@ public class ResultsController : ControllerBase
         if (enrolment == null)
             return BadRequest(new { message = "Enrolment not found." });
 
+        // Ownership check – only the Organiser of the event may record results
         if (enrolment.Event.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only record results for events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only record results for events that you organised." });
 
+        // One result per enrolment
         if (enrolment.Result != null)
             return BadRequest(new { message = "A result already exists for this enrolment." });
 
@@ -76,9 +90,10 @@ public class ResultsController : ControllerBase
         return CreatedAtAction(nameof(GetMine), dto);
     }
 
-    /// <summary>
-    /// Participant views their own results.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/results/mine
+    // -------------------------------------------------------------------------
+    /// <summary>Participant views their own results.</summary>
     [HttpGet("mine")]
     [AuthorizeRole("Participant")]
     [SwaggerOperation(Summary = "Get my results")]
@@ -109,9 +124,10 @@ public class ResultsController : ControllerBase
         return Ok(list);
     }
 
-    /// <summary>
-    /// Organiser views all results for one of their events.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/results/event/{eventId}
+    // -------------------------------------------------------------------------
+    /// <summary>Organiser views all results for one of their events.</summary>
     [HttpGet("event/{eventId:int}")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Get results for an event")]
@@ -126,7 +142,8 @@ public class ResultsController : ControllerBase
             return NotFound(new { message = "Event not found." });
 
         if (ev.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only view results for events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only view results for events that you organised." });
 
         var list = await _context.Results
             .Include(r => r.Enrolment)
@@ -143,7 +160,7 @@ public class ResultsController : ControllerBase
                 FinishTime = r.FinishTime,
                 Position = r.Position
             })
-            .OrderBy(r => r.Position)
+            .OrderBy(r => r.Position)       // Show 1st place first
             .ToListAsync();
 
         return Ok(list);
