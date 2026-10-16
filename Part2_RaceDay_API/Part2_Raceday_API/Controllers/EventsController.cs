@@ -1,3 +1,12 @@
+// =============================================================================
+// EventsController.cs – CRUD operations for race events
+// =============================================================================
+// Security rules:
+//   - Viewing events      → any authenticated user
+//   - Creating / updating / deleting → only Organisers
+//   - An Organiser may only modify events that THEY created
+// =============================================================================
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Part2_Raceday_API.Data;
@@ -9,7 +18,7 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Part2_Raceday_API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/[controller]")]                 // → /api/events/...
 [SwaggerTag("Events - Create, view, update and delete race events")]
 public class EventsController : ControllerBase
 {
@@ -20,17 +29,18 @@ public class EventsController : ControllerBase
         _context = context;
     }
 
-    /// <summary>
-    /// Get all events (both roles can view).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/events
+    // -------------------------------------------------------------------------
+    /// <summary>Get all events (both roles can view).</summary>
     [HttpGet]
-    [AuthorizeRole] // Authenticated users only
+    [AuthorizeRole]                         // Any logged-in user
     [SwaggerOperation(Summary = "Get all events")]
     [ProducesResponseType(typeof(IEnumerable<EventDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
         var events = await _context.Events
-            .Include(e => e.Organiser)
+            .Include(e => e.Organiser)      // Needed to build OrganiserName
             .OrderBy(e => e.EventDate)
             .Select(e => new EventDto
             {
@@ -49,9 +59,10 @@ public class EventsController : ControllerBase
         return Ok(events);
     }
 
-    /// <summary>
-    /// Get a single event by ID.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/events/{id}
+    // -------------------------------------------------------------------------
+    /// <summary>Get a single event by ID.</summary>
     [HttpGet("{id:int}")]
     [AuthorizeRole]
     [SwaggerOperation(Summary = "Get event by ID")]
@@ -80,15 +91,17 @@ public class EventsController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Get events organised by the currently logged-in Organiser.
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // GET /api/events/mine
+    // -------------------------------------------------------------------------
+    /// <summary>Get events organised by the currently logged-in Organiser.</summary>
     [HttpGet("mine")]
-    [AuthorizeRole("Organiser")]
+    [AuthorizeRole("Organiser")]            // Only Organisers
     [SwaggerOperation(Summary = "Get my organised events")]
     [ProducesResponseType(typeof(IEnumerable<EventDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMine()
     {
+        // UserId was stored in the session during login
         var userId = HttpContext.Session.GetInt32("UserId")!.Value;
 
         var events = await _context.Events
@@ -110,9 +123,10 @@ public class EventsController : ControllerBase
         return Ok(events);
     }
 
-    /// <summary>
-    /// Create a new event (Organiser only).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // POST /api/events
+    // -------------------------------------------------------------------------
+    /// <summary>Create a new event (Organiser only).</summary>
     [HttpPost]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Create a new event")]
@@ -124,6 +138,7 @@ public class EventsController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.Location))
             return BadRequest(new { message = "Name and Location are required." });
 
+        // Restrict EventType to a known set of values
         var validTypes = new[] { "Run", "Walk", "Cycle" };
         if (!validTypes.Contains(request.EventType, StringComparer.OrdinalIgnoreCase))
             return BadRequest(new { message = "EventType must be Run, Walk or Cycle." });
@@ -138,7 +153,7 @@ public class EventsController : ControllerBase
             Location = request.Location.Trim(),
             DistanceKm = request.DistanceKm,
             EventType = request.EventType,
-            OrganiserId = userId
+            OrganiserId = userId          // The logged-in user becomes the owner
         };
 
         _context.Events.Add(entity);
@@ -159,9 +174,10 @@ public class EventsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = entity.EventId }, dto);
     }
 
-    /// <summary>
-    /// Update an existing event (only the owning Organiser).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // PUT /api/events/{id}
+    // -------------------------------------------------------------------------
+    /// <summary>Update an existing event (only the owning Organiser).</summary>
     [HttpPut("{id:int}")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Update an event")]
@@ -176,8 +192,10 @@ public class EventsController : ControllerBase
         if (entity == null)
             return NotFound(new { message = "Event not found." });
 
+        // Ownership check – an Organiser may only edit their own events
         if (entity.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only update events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only update events that you organised." });
 
         entity.Name = request.Name.Trim();
         entity.Description = request.Description?.Trim() ?? string.Empty;
@@ -201,9 +219,10 @@ public class EventsController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Delete an event (only the owning Organiser).
-    /// </summary>
+    // -------------------------------------------------------------------------
+    // DELETE /api/events/{id}
+    // -------------------------------------------------------------------------
+    /// <summary>Delete an event (only the owning Organiser).</summary>
     [HttpDelete("{id:int}")]
     [AuthorizeRole("Organiser")]
     [SwaggerOperation(Summary = "Delete an event")]
@@ -219,11 +238,12 @@ public class EventsController : ControllerBase
             return NotFound(new { message = "Event not found." });
 
         if (entity.OrganiserId != userId)
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only delete events that you organised." });
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "You can only delete events that you organised." });
 
         _context.Events.Remove(entity);
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return NoContent();     // 204 – successfully deleted, no body
     }
 }
