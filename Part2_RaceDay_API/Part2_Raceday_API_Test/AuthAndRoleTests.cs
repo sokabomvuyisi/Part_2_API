@@ -1,31 +1,56 @@
+// =============================================================================
+// AuthAndRoleTests.cs – Integration tests for authentication and role security
+// =============================================================================
+// These tests spin up a real (in-memory) version of the API using
+// CustomWebApplicationFactory and make real HTTP calls.
+//
+// What we verify:
+//   1. Registration works for both roles and rejects invalid roles
+//   2. Login succeeds with correct credentials and fails with wrong ones
+//   3. Unauthenticated requests receive 401
+//   4. Role restrictions work (Participant cannot create events, etc.)
+//   5. A full happy-path enrolment flow works
+// =============================================================================
+
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Part2_Raceday_API.Data;          // if needed
-using RaceDay.Contracts;               // for the DTOs
+using RaceDay.Contracts;
 using Xunit;
 
 namespace RaceDay.Api.Tests;
 
+// IClassFixture means one factory (and therefore one in-memory DB) is shared
+// across all tests in this class – faster and more realistic.
 public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
-    private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    // Case-insensitive JSON so property names match regardless of camelCase/PascalCase
+    private readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public AuthAndRoleTests(CustomWebApplicationFactory factory)
     {
+        // HandleCookies = true is CRITICAL because our auth is session-based.
+        // Without it the session cookie would be ignored between requests.
         _client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
-            HandleCookies = true // important for session
+            HandleCookies = true
         });
     }
 
-    // ========== AUTHENTICATION ==========
+    // =========================================================================
+    // AUTHENTICATION TESTS
+    // =========================================================================
 
     [Fact]
     public async Task Register_ValidOrganiser_Returns201()
     {
+        // Arrange – unique email so the test can be run many times
         var request = new RegisterRequest
         {
             FirstName = "Alice",
@@ -35,8 +60,10 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
             Role = "Organiser"
         };
 
+        // Act
         var response = await _client.PostAsJsonAsync("/api/auth/register", request);
 
+        // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>(_jsonOptions);
@@ -64,6 +91,7 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_InvalidRole_Returns400()
     {
+        // "Admin" is not a valid role in our system
         var request = new RegisterRequest
         {
             FirstName = "Test",
@@ -103,12 +131,14 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    // ========== ROLE ENFORCEMENT ==========
+    // =========================================================================
+    // ROLE ENFORCEMENT TESTS
+    // =========================================================================
 
     [Fact]
     public async Task Unauthenticated_AccessProtectedEndpoint_Returns401()
     {
-        // Fresh client with no session
+        // No login has been performed, so the session is empty
         var response = await _client.GetAsync("/api/profile/me");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -129,6 +159,7 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
             EventType = "Run"
         };
 
+        // Participant is logged in but does not have the Organiser role
         var response = await _client.PostAsJsonAsync("/api/events", create);
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -156,7 +187,7 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Participant_CanEnrol_Returns201()
     {
-        // Create organiser + event first
+        // ----- Step 1: Organiser creates an event -----
         var orgEmail = $"org2{Guid.NewGuid():N}@test.com";
         await RegisterAndLogin(orgEmail, "Password123", "Organiser");
 
@@ -173,13 +204,13 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
         eventResp.EnsureSuccessStatusCode();
         var eventDto = await eventResp.Content.ReadFromJsonAsync<EventDto>(_jsonOptions);
 
-        // Add a category
+        // ----- Step 2: Organiser adds a category -----
         var catReq = new CreateCategoryRequest { Name = "Open" };
         var catResp = await _client.PostAsJsonAsync($"/api/events/{eventDto!.EventId}/categories", catReq);
         catResp.EnsureSuccessStatusCode();
         var catDto = await catResp.Content.ReadFromJsonAsync<CategoryDto>(_jsonOptions);
 
-        // Now login as participant and enrol
+        // ----- Step 3: Participant enrols -----
         var partEmail = $"part2{Guid.NewGuid():N}@test.com";
         await RegisterAndLogin(partEmail, "Password123", "Participant");
 
@@ -196,6 +227,7 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Organiser_CannotEnrol_Returns403()
     {
+        // Organisers are not allowed to enrol in events
         var email = $"org3{Guid.NewGuid():N}@test.com";
         await RegisterAndLogin(email, "Password123", "Organiser");
 
@@ -205,8 +237,11 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
-    // ========== HELPERS ==========
+    // =========================================================================
+    // HELPER METHODS (keep the tests themselves short and readable)
+    // =========================================================================
 
+    /// <summary>Registers a new user. Throws if registration fails.</summary>
     private async Task RegisterUser(string email, string password, string role)
     {
         var request = new RegisterRequest
@@ -221,6 +256,7 @@ public class AuthAndRoleTests : IClassFixture<CustomWebApplicationFactory>
         resp.EnsureSuccessStatusCode();
     }
 
+    /// <summary>Registers a user and immediately logs them in (sets the session cookie).</summary>
     private async Task RegisterAndLogin(string email, string password, string role)
     {
         await RegisterUser(email, password, role);
